@@ -1,44 +1,29 @@
 FROM ubuntu:18.04
 
 ARG NDK_VERSION=r21d
-ARG OPENSSL_VERSION=1.1.1d
 ARG QT_VERSION=5.13.2
+ARG NODE_VERSION=10.x
 ARG SDK_BUILD_TOOLS=29.0.2
+ARG TIME_ZONE=Europe/Riga
 ARG SDK_PACKAGES="tools platform-tools"
 ARG SDK_PLATFORM=android-21
 ARG BUILD_BRANCH=develop
 
 ENV \
     ANDROID_HOME=/opt/android-sdk \
-    ANDROID_NDK_ARCH=arch-arm64 \
-    ANDROID_NDK_EABI=llvm \
-    ANDROID_NDK_HOST=linux-x86_64 \
-    ANDROID_NDK_TOOLCHAIN_PREFIX=aarch64-linux-android \
-    ANDROID_NDK_TOOLCHAIN_VERSION=4.9 \
     DEBIAN_FRONTEND=noninteractive \
     QMAKESPEC=android-clang \
     QT_PATH=/opt/qt
 
 ENV \
     ANDROID_SDK_ROOT=${ANDROID_HOME} \
-    ANDROID_NDK_PLATFORM=${SDK_PLATFORM} \
-    ANDROID_NDK_ROOT=${ANDROID_HOME}/ndk-${NDK_VERSION} \
-    ANDROID_NDK_TOOLS_PREFIX=${ANDROID_NDK_TOOLCHAIN_PREFIX}
+    ANDROID_NDK_ROOT=${ANDROID_HOME}/ndk-${NDK_VERSION}
 
 ENV \
-    ANDROID_DEV=${ANDROID_NDK_ROOT}/platforms/${ANDROID_NDK_PLATFORM}/${ANDROID_NDK_ARCH}/usr \
-    ANDROID_NDK_TOOLCHAIN=${ANDROID_NDK_ROOT}/toolchains/${ANDROID_NDK_TOOLCHAIN_PREFIX}-${ANDROID_NDK_TOOLCHAIN_VERSION}/prebuilt/${ANDROID_NDK_HOST}
+    BASE_PATH=${PATH} \
+    PATH=${ANDROID_HOME}/tools:${ANDROID_HOME}/tools/bin:${ANDROID_HOME}/platform-tools:${PATH}
 
-# ENV \
-#     PATH=${ANDROID_NDK_TOOLCHAIN}/${ANDROID_NDK_TOOLCHAIN_PREFIX}/bin:${ANDROID_NDK_ROOT}/toolchains/${ANDROID_NDK_EABI}/prebuilt/${ANDROID_NDK_HOST}/bin:${ANDROID_HOME}/tools:${ANDROID_HOME}/tools/bin:${ANDROID_HOME}/platform-tools:${PATH}
-
-ENV \
-    PATH=${ANDROID_NDK_ROOT}/toolchains/${ANDROID_NDK_EABI}/prebuilt/${ANDROID_NDK_HOST}/bin:${ANDROID_HOME}/tools:${ANDROID_HOME}/tools/bin:${ANDROID_HOME}/platform-tools:${PATH}
-  
-# ENV PATH ${QT_PATH}/${QT_VERSION}/android_arm64_v8a/bin:${PATH}
-ENV PATH ${QT_PATH}/${QT_VERSION}/android_armv7/bin:${PATH}
-# ENV PATH ${QT_PATH}/${QT_VERSION}/android_x86/bin:${PATH}
-# ENV PATH ${QT_PATH}/${QT_VERSION}/android_x86_64/bin:${PATH}
+RUN ln -snf /usr/share/zoneinfo/${TIME_ZONE} /etc/localtime && echo ${TIME_ZONE} > /etc/timezone
 
 # Install updates & requirements:
 #  * unzip - unpack platform tools
@@ -83,6 +68,13 @@ RUN dpkg --add-architecture i386 && apt update && apt full-upgrade -y && apt ins
     && apt-get -qq clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Download & install NodeJS
+RUN curl -sL https://deb.nodesource.com/setup_${NODE_VERSION} | sudo -E bash -
+RUN sudo apt-get install -y nodejs
+
+# Install Grunt
+RUN sudo npm install -g grunt-cli
+
 # Download & unpack Qt toolchain
 COPY scripts/install-qt.sh /tmp/build/
 RUN for tc in "android_x86_64" "android_x86" "android_armv7" "android_arm64_v8a"; do /tmp/build/install-qt.sh --version ${QT_VERSION} --directory ${QT_PATH} --target android --toolchain $tc \
@@ -108,10 +100,6 @@ RUN /tmp/build/install-android-sdk.sh
 COPY scripts/install-android-ndk.sh /tmp/build/
 RUN /tmp/build/install-android-ndk.sh
 
-# # Download, build & install OpenSSL for Android
-# COPY scripts/install-openssl-android-clang.sh /tmp/build/
-# RUN /tmp/build/install-openssl-android-clang.sh
-
 # Reconfigure locale
 RUN locale-gen en_US.UTF-8 && dpkg-reconfigure locales \
 # Add group & user, and make the SDK directory writable
@@ -123,6 +111,10 @@ RUN locale-gen en_US.UTF-8 && dpkg-reconfigure locales \
 USER user
 WORKDIR /home/user
 
+# Reset PATH
+ENV PATH=${BASE_PATH}
+
+RUN git clone --branch ${BUILD_BRANCH} https://github.com/ONLYOFFICE/DocumentBuilder.git
 RUN git clone --branch ${BUILD_BRANCH} https://github.com/ONLYOFFICE/build_tools.git
 
 WORKDIR /home/user/build_tools

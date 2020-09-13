@@ -1,4 +1,5 @@
 FROM ubuntu:18.04
+LABEL maintainer Ascensio System SIA <support@onlyoffice.com>
 
 ARG NDK_VERSION=r21d
 ARG QT_VERSION=5.13.2
@@ -8,6 +9,7 @@ ARG TIME_ZONE=Europe/Riga
 ARG SDK_PACKAGES="tools platform-tools"
 ARG SDK_PLATFORM=android-21
 ARG BUILD_BRANCH=develop
+ARG BUILD_CONFIG=release
 
 ENV \
     ANDROID_HOME=/opt/android-sdk \
@@ -118,7 +120,7 @@ RUN git clone --branch ${BUILD_BRANCH} https://github.com/ONLYOFFICE/DocumentBui
 RUN git clone --branch ${BUILD_BRANCH} https://github.com/ONLYOFFICE/build_tools.git
 
 WORKDIR /home/user/build_tools
-RUN python configure.py --branch ${BUILD_BRANCH} --update 1 --module mobile --platform android --qt-dir=${QT_PATH}/${QT_VERSION} --clean 1 --git-protocol https
+RUN python configure.py --branch ${BUILD_BRANCH} --update 1 --module mobile --platform android --qt-dir=${QT_PATH}/${QT_VERSION} --clean 1 --git-protocol https --config ${BUILD_CONFIG}
 RUN python make.py || true
 
 WORKDIR /home/user/build_tools/out/

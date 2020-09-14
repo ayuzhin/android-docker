@@ -16,7 +16,13 @@ Docker for building libraries of editors on Android.
 
     ./docker_build.sh
 
-Use this command to build libraries. After a successful build, will be created a `libs.zip` file.
+Use this command to build release libraries.
+
+    ./docker_build.sh debug
+
+Use this command to build developer libraries.
+
+After a successful build, will be created a `libs.zip` file.
 
 ## User Feedback and Support
 
